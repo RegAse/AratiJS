@@ -1,6 +1,16 @@
-var Arati = function() {
-	this.setController = function(controllerName, file) {
+var Arati = {
+	setController: function(controllerName, file) {
 		console.log("Setting the controller here.");
+	},
+	setRouter: function(router) {
+		this.router = router;
+	},
+	update: function(name, value) {
+		console.log("Update: name = " + name + ", value = " + value);
+		for (var i = this.router.currentRoute.dict[name].length - 1; i >= 0; i--) {
+			var output = Utility.ReplaceWithVariables(this.router.currentRoute.dict[name][i].template, window[this.router.currentRoute.controller]);
+			this.router.currentRoute.dict[name][i].element.innerHTML = output;
+		}
 	}
 }
 
@@ -46,6 +56,29 @@ Utility.AddScriptToDOM = function(url, onload) {
 	script.src = url + (Arati.devMode ? "?ts=" + Date.now() : "");
 	// TODO: FIX:ANNOYING CACHE PROBLEM
 }
+
+Utility.ReplaceWithVariables = function(html, model) {
+	var regex = new RegExp('{{(.*)}}', 'gi');
+	var match = html.match(regex);
+	if (match != null) {
+		for (var i = match.length - 1; i >= 0; i--) {
+			var regex = new RegExp(match[i], 'gi');
+			var variable = match[i].replace('{{', '');
+
+			variable = variable.replace('}}', '');
+			variable = variable.trim();
+
+			if (typeof model[variable] == 'function') {
+				html = html.replace(regex, model[variable]())
+			}
+			else {
+				html = html.replace(regex, model[variable]);
+			}
+		}
+	}
+	return html;
+}
+
 
 function Router() {
 	var that = this;
@@ -122,15 +155,34 @@ function Router() {
 			} catch(error){
 				console.log("[Arati ERROR] The controller was not found.");
 			}
-			that.populateCurrentRouteView();
+			//that.populateCurrentRouteView();
 		});
+	}
+	this.storeElements = function() {
+		var dict = {}
+		var eles = document.querySelectorAll("[ar-update]");
+		for (var i = eles.length - 1; i >= 0; i--) {
+			var att = eles[i].getAttribute("ar-update");
+			var di = dict[att];
+			if (di != null) {
+				dict[att].push({"element": eles[i], "template": eles[i].innerHTML});
+			}
+			else {
+				dict[att] = [{"element": eles[i], "template": eles[i].innerHTML}];
+			}
+		}
+		that.currentRoute.dict = dict;
 	}
 	this.LoadCurrentRoute = function(render, loadController) {
 		Request(that.currentRoute.view, function(response) {
-			// Do something on success
+			// loads the current view
 			console.log("Success");
 
 			that.currentRoute.retrievedView = response;
+			var renderViews = document.querySelectorAll('[render-views]');
+			renderViews[0].innerHTML = response;
+
+			that.storeElements();
 			if (render) {
 				that.renderCurrentRouteView();
 			}
@@ -155,6 +207,7 @@ Arati.devMode = true;
 
 // Run the router
 var router = new Router();
+Arati.setRouter(router);
 
 // Register routes
 //router.registerRoute("/example", "NameOfTheControllerAratiCalls", "PathToView", "exampleController OR js/cor/controller");

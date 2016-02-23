@@ -1,6 +1,10 @@
-var Arati = {
+function Arati() {
+
+}
+
+Arati.prototype = {
 	setController: function(controllerName, file) {
-		console.log("Setting the controller here.");
+		console.log("Set controller here.");
 	},
 	setRouter: function(router) {
 		this.router = router;
@@ -13,6 +17,9 @@ var Arati = {
 		}
 	}
 }
+
+// Initialize Arati
+var Arati = new Arati();
 
 function Request(url, success) {
 	console.log("Requesting url: " + url);
@@ -79,36 +86,41 @@ Utility.ReplaceWithVariables = function(html, model) {
 	return html;
 }
 
-
-function Router() {
-	var that = this;
+function Router(){
 	this.routes = [];
 	this.currentRoute = {};
+	
+	var that = this;
+	window.addEventListener('hashchange', function() {
+		that.hashChanged();
+	});
+}
 
-	this.registerRoute = function(url, controller, view, controllerPath){
-		that.routes.push({url: url, controller: controller, view: view, controllerPath: controllerPath});
-	}
-	this.start = function (){
+Router.prototype = {
+	registerRoute: function(url, controller, view, controllerPath) {
+		this.routes.push({url: url, controller: controller, view: view, controllerPath: controllerPath});
+	},
+	start: function() {
 		console.log("Current route url: " + window.location.hash.slice(1));
 		var currentUrl = window.location.hash.slice(1);
 
-		that.currentRoute = that.findRoute(currentUrl);
+		this.currentRoute = this.findRoute(currentUrl);
 		console.log("Found the route");
 
-		that.LoadCurrentRoute(true, true);
-	}
-	this.findRoute = function (url) {
-		for (var i = that.routes.length - 1; i >= 0; i--) {
-			if (that.routes[i].url == url) {
-				return that.routes[i];
+		this.LoadCurrentRoute(true, true);
+	},
+	findRoute: function(url) {
+		for (var i = this.routes.length - 1; i >= 0; i--) {
+			if (this.routes[i].url == url) {
+				return this.routes[i];
 			}
 		}
 		return false;
-	}
-	this.populateCurrentRouteView = function () {
+	},
+	populateCurrentRouteView: function() {
 		var renderViews = document.querySelectorAll('[render-views]');
 		if (renderViews.length == 1) {
-			var html = that.currentRoute.retrievedView;
+			var html = this.currentRoute.retrievedView;
 			
 			var regex = new RegExp('{{(.*)}}', 'gi');
 			var match = html.match(regex);
@@ -120,7 +132,7 @@ function Router() {
 					variable = variable.replace('}}', '');
 					variable = variable.trim();
 
-					var controller = window[that.currentRoute.controller];
+					var controller = window[this.currentRoute.controller];
 					if (typeof controller[variable] == 'function') {
 						html = html.replace(regex, controller[variable]())
 					}
@@ -129,25 +141,26 @@ function Router() {
 					}
 				}
 			}
-			console.log(window[that.currentRoute.controller]);
+			console.log(window[this.currentRoute.controller]);
 			renderViews[0].innerHTML = html;
 			console.log(renderViews[0]);
 		}
-	}
-	this.renderCurrentRouteView = function() {
+	},
+	renderCurrentRouteView: function() {
 		// var renderViews = document.querySelectorAll('[render-views]');
 		// if (renderViews.length == 1) {
-		// 	var html = that.currentRoute.retrievedView;
+		// 	var html = this.currentRoute.retrievedView;
 		// 	renderViews[0].innerHTML = html;
 		// }
-	}
-	this.getCurrentController = function() {
-		var url = "js/controllers/" + that.currentRoute.controllerPath + ".js";
+	},
+	getCurrentController: function() {
+		var url = "js/controllers/" + this.currentRoute.controllerPath + ".js";
 		var scripts = document.querySelectorAll('[araticontrollerremove]')
 		for (var i = scripts.length - 1; i >= 0; i--) {
 			document.body.removeChild(scripts[i]);
 		}
 
+		var that = this;
 		Utility.AddScriptToDOM(url, function(){
 			// the script was loaded 
 			try {
@@ -156,9 +169,10 @@ function Router() {
 				console.log("[Arati ERROR] The controller was not found.");
 			}
 			//that.populateCurrentRouteView();
+			// NEED TO RECODE populate function
 		});
-	}
-	this.storeElements = function() {
+	},
+	storeElements: function() {
 		var dict = {}
 		var eles = document.querySelectorAll("[ar-update]");
 		for (var i = eles.length - 1; i >= 0; i--) {
@@ -171,10 +185,11 @@ function Router() {
 				dict[att] = [{"element": eles[i], "template": eles[i].innerHTML}];
 			}
 		}
-		that.currentRoute.dict = dict;
-	}
-	this.LoadCurrentRoute = function(render, loadController) {
-		Request(that.currentRoute.view, function(response) {
+		this.currentRoute.dict = dict;
+	},
+	LoadCurrentRoute: function(render, loadController) {
+		var that = this;
+		Request(this.currentRoute.view, function(response) {
 			// loads the current view
 			console.log("Success");
 
@@ -190,16 +205,15 @@ function Router() {
 				that.getCurrentController();
 			}
 		});
-	}
-	this.hashChanged = function() {
+	},
+	hashChanged: function() {
 		//Set the previous controller to null
-		window[that.currentRoute.controller] = undefined;
+		window[this.currentRoute.controller] = undefined;
 
 		var currentUrl = window.location.hash.slice(1);
-		that.currentRoute = that.findRoute(currentUrl);
-		that.LoadCurrentRoute(true, true);
+		this.currentRoute = this.findRoute(currentUrl);
+		this.LoadCurrentRoute(true, true);
 	}
-	window.onhashchange = this.hashChanged;
 }
 
 // Activate dev mode to disable caching on controller files
@@ -219,3 +233,4 @@ router.registerRoute("/shows", "ShowController", "views/shows/shows.html", "Show
 //router.registerRoute("/shows/{slug}-{id}", "ShowController", "views/shows/show.html", "ShowController");
 
 router.start();
+console.log(router.currentRoute);

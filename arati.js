@@ -163,8 +163,8 @@ function Router() {
 }
 
 Router.prototype = {
-	registerRoute: function(url, controller, viewPath, controllerPath) {
-		this.routes.push({url: url, controller: controller, viewPath: viewPath, controllerPath: controllerPath});
+	registerRoute: function(url, controllerName, viewPath, controllerPath) {
+		this.routes.push({url: url, viewPath: viewPath, controllerPath: controllerPath, controllerName});
 	},
 	start: function() {
 		console.log("Current route url: " + window.location.hash.slice(1));
@@ -199,7 +199,7 @@ Router.prototype = {
 			}
 			Utility.AddScriptToDOM(url, function(){
 				// the script was loaded 
-				that.currentRoute.controller = window[that.currentRoute.controller];
+				that.currentRoute.controller = window[that.currentRoute.controllerName];
 					if (render) {
 						that.currentRoute.view.load();
 					}
@@ -215,7 +215,7 @@ Router.prototype = {
 	},
 	hashChanged: function() {
 		//Set the previous controller to null
-		window[this.currentRoute.controller] = undefined;
+		//window[this.currentRoute.controller] = undefined;
 
 		var currentUrl = window.location.hash.slice(1);
 		this.currentRoute = this.findRoute(currentUrl);

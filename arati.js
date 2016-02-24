@@ -86,6 +86,31 @@ Utility.ReplaceWithVariables = function(html, model) {
 	}
 	return html;
 }
+Utility.regexReplaceWithVariable = function(html, model) {
+	if (html != null) {
+		// Find all the variables in this element
+		var regex = new RegExp('{{(.*)}}', 'gi');
+		var match = html.match(regex);
+
+		if (match != null) {
+			for (var x = match.length - 1; x >= 0; x--) {
+				var regex = new RegExp(match[x], 'gi');
+				var variable = match[x].replace('{{', '');
+
+				variable = variable.replace('}}', '');
+				variable = variable.trim();
+
+				if (typeof model[variable] == 'function') {
+					html = html.replace(regex, model[variable]())
+				}
+				else {
+					html = html.replace(regex, model[variable]);
+				}
+			}
+		}
+	}
+	return html;
+}
 
 function View(view, route) {
 	this.raw = view;
@@ -98,33 +123,20 @@ View.prototype = {
 		var renderViews = document.querySelectorAll('[render-views]');
 		if (renderViews.length == 1) {
 			var view = renderViews[0];
+
 			// Loop through all child nodes.
 			for (var i = 0; i < renderViews[0].childNodes.length; i++) {
 				var html = renderViews[0].childNodes[i].innerHTML;
 				if (html != null) {
-					// Find all the variables in this element
-					var regex = new RegExp('{{(.*)}}', 'gi');
-					var match = html.match(regex);
+					
+					html = Utility.regexReplaceWithVariable(html, this.route.controller);
 
-					if (match != null) {
-						for (var x = match.length - 1; x >= 0; x--) {
-							var regex = new RegExp(match[x], 'gi');
-							var variable = match[x].replace('{{', '');
-
-							variable = variable.replace('}}', '');
-							variable = variable.trim();
-
-							var controller = this.route.controller;
-							var controller = this.route.controller;
-							if (typeof controller[variable] == 'function') {
-								html = html.replace(regex, controller[variable]())
-							}
-							else {
-								html = html.replace(regex, controller[variable]);
-							}
-						}
-					}
 					renderViews[0].childNodes[i].innerHTML = html;
+				}
+				else if (renderViews[0].childNodes[i].nodeName = "#text") {
+					var tex = renderViews[0].childNodes[i].data;
+					var text = Utility.regexReplaceWithVariable(tex, this.route.controller);
+					renderViews[0].childNodes[i].data = text;
 				}
 			}
 		}

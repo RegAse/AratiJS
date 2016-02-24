@@ -1,5 +1,5 @@
 function Arati() {
-
+	this.router = {};
 }
 
 Arati.prototype = {
@@ -11,9 +11,10 @@ Arati.prototype = {
 	},
 	update: function(name, value) {
 		console.log("Update: name = " + name + ", value = " + value);
-		for (var i = this.router.currentRoute.dict[name].length - 1; i >= 0; i--) {
-			var output = Utility.ReplaceWithVariables(this.router.currentRoute.dict[name][i].template, window[this.router.currentRoute.controller]);
-			this.router.currentRoute.dict[name][i].element.innerHTML = output;
+		console.log(this.router.currentRoute.view.dict);
+		for (var i = this.router.currentRoute.view.dict[name].length - 1; i >= 0; i--) {
+			var output = Utility.ReplaceWithVariables(this.router.currentRoute.view.dict[name][i].template, router.currentRoute.controller);
+			this.router.currentRoute.view.dict[name][i].element.innerHTML = output;
 		}
 	}
 }
@@ -86,10 +87,75 @@ Utility.ReplaceWithVariables = function(html, model) {
 	return html;
 }
 
-function Router(){
+function View(view, route) {
+	this.raw = view;
+	this.route = route;
+	this.dict = {};
+}
+
+View.prototype = {
+	populate: function() {
+		var renderViews = document.querySelectorAll('[render-views]');
+		if (renderViews.length == 1) {
+			var view = renderViews[0];
+			// Loop through all child nodes.
+			for (var i = 0; i < renderViews[0].childNodes.length; i++) {
+				var html = renderViews[0].childNodes[i].innerHTML;
+				if (html != null) {
+					// Find all the variables in this element
+					var regex = new RegExp('{{(.*)}}', 'gi');
+					var match = html.match(regex);
+
+					if (match != null) {
+						for (var x = match.length - 1; x >= 0; x--) {
+							var regex = new RegExp(match[x], 'gi');
+							var variable = match[x].replace('{{', '');
+
+							variable = variable.replace('}}', '');
+							variable = variable.trim();
+
+							var controller = this.route.controller;
+							var controller = this.route.controller;
+							if (typeof controller[variable] == 'function') {
+								html = html.replace(regex, controller[variable]())
+							}
+							else {
+								html = html.replace(regex, controller[variable]);
+							}
+						}
+					}
+					renderViews[0].childNodes[i].innerHTML = html;
+				}
+			}
+		}
+	},
+	load: function() {
+		var renderViews = document.querySelectorAll('[render-views]');
+		renderViews[0].innerHTML = this.raw;
+		this.storeElements();
+		this.populate();
+	},
+	storeElements: function() {
+		var dict = {}
+		var eles = document.querySelectorAll("[ar-update]");
+		for (var i = eles.length - 1; i >= 0; i--) {
+			var att = eles[i].getAttribute("ar-update");
+			var di = dict[att];
+			if (di != null) {
+				dict[att].push({"element": eles[i], "template": eles[i].innerHTML});
+			}
+			else {
+				dict[att] = [{"element": eles[i], "template": eles[i].innerHTML}];
+			}
+		}
+		this.dict = dict;
+	}
+}
+
+function Router() {
 	this.routes = [];
 	this.currentRoute = {};
-	
+
 	var that = this;
 	window.addEventListener('hashchange', function() {
 		that.hashChanged();
@@ -97,8 +163,8 @@ function Router(){
 }
 
 Router.prototype = {
-	registerRoute: function(url, controller, view, controllerPath) {
-		this.routes.push({url: url, controller: controller, view: view, controllerPath: controllerPath});
+	registerRoute: function(url, controller, viewPath, controllerPath) {
+		this.routes.push({url: url, controller: controller, viewPath: viewPath, controllerPath: controllerPath});
 	},
 	start: function() {
 		console.log("Current route url: " + window.location.hash.slice(1));
@@ -117,93 +183,34 @@ Router.prototype = {
 		}
 		return false;
 	},
-	populateCurrentRouteView: function() {
-		var renderViews = document.querySelectorAll('[render-views]');
-		if (renderViews.length == 1) {
-			var html = this.currentRoute.retrievedView;
-			
-			var regex = new RegExp('{{(.*)}}', 'gi');
-			var match = html.match(regex);
-			if (match != null) {
-				for (var i = match.length - 1; i >= 0; i--) {
-					var regex = new RegExp(match[i], 'gi');
-					var variable = match[i].replace('{{', '');
-
-					variable = variable.replace('}}', '');
-					variable = variable.trim();
-
-					var controller = window[this.currentRoute.controller];
-					if (typeof controller[variable] == 'function') {
-						html = html.replace(regex, controller[variable]())
-					}
-					else {
-						html = html.replace(regex, controller[variable]);
-					}
-				}
-			}
-			console.log(window[this.currentRoute.controller]);
-			renderViews[0].innerHTML = html;
-			console.log(renderViews[0]);
-		}
-	},
-	renderCurrentRouteView: function() {
-		// var renderViews = document.querySelectorAll('[render-views]');
-		// if (renderViews.length == 1) {
-		// 	var html = this.currentRoute.retrievedView;
-		// 	renderViews[0].innerHTML = html;
-		// }
-	},
-	getCurrentController: function() {
-		var url = "js/controllers/" + this.currentRoute.controllerPath + ".js";
-		var scripts = document.querySelectorAll('[araticontrollerremove]')
-		for (var i = scripts.length - 1; i >= 0; i--) {
-			document.body.removeChild(scripts[i]);
-		}
-
-		var that = this;
-		Utility.AddScriptToDOM(url, function(){
-			// the script was loaded 
-			try {
-				window[that.currentRoute.controller];
-			} catch(error){
-				console.log("[Arati ERROR] The controller was not found.");
-			}
-			//that.populateCurrentRouteView();
-			// NEED TO RECODE populate function
-		});
-	},
-	storeElements: function() {
-		var dict = {}
-		var eles = document.querySelectorAll("[ar-update]");
-		for (var i = eles.length - 1; i >= 0; i--) {
-			var att = eles[i].getAttribute("ar-update");
-			var di = dict[att];
-			if (di != null) {
-				dict[att].push({"element": eles[i], "template": eles[i].innerHTML});
-			}
-			else {
-				dict[att] = [{"element": eles[i], "template": eles[i].innerHTML}];
-			}
-		}
-		this.currentRoute.dict = dict;
-	},
 	LoadCurrentRoute: function(render, loadController) {
 		var that = this;
-		Request(this.currentRoute.view, function(response) {
-			// loads the current view
-			console.log("Success");
+		Request(this.currentRoute.viewPath, function(response) {
+			// Succesfully loaded the view.
 
-			that.currentRoute.retrievedView = response;
-			var renderViews = document.querySelectorAll('[render-views]');
-			renderViews[0].innerHTML = response;
-
-			that.storeElements();
-			if (render) {
-				that.renderCurrentRouteView();
+			// Create a new view.
+			var view = new View(response, that.currentRoute);
+			that.currentRoute.view = view;
+			
+			var url = "js/controllers/" + that.currentRoute.controllerPath + ".js";
+			var scripts = document.querySelectorAll('[araticontrollerremove]')
+			for (var i = scripts.length - 1; i >= 0; i--) {
+				document.body.removeChild(scripts[i]);
 			}
-			if (loadController) {
-				that.getCurrentController();
-			}
+			Utility.AddScriptToDOM(url, function(){
+				// the script was loaded 
+				that.currentRoute.controller = window[that.currentRoute.controller];
+					if (render) {
+						that.currentRoute.view.load();
+					}
+				// try {
+					
+				// } catch(error){
+				// 	console.log("[Arati ERROR] The controller was not found.");
+				// }
+				//that.populateCurrentRouteView();
+				// NEED TO RECODE populate function
+			});
 		});
 	},
 	hashChanged: function() {
@@ -233,4 +240,3 @@ router.registerRoute("/shows", "ShowController", "views/shows/shows.html", "Show
 //router.registerRoute("/shows/{slug}-{id}", "ShowController", "views/shows/show.html", "ShowController");
 
 router.start();
-console.log(router.currentRoute);

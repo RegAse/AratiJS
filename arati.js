@@ -222,21 +222,3 @@ Router.prototype = {
 		this.LoadCurrentRoute(true, true);
 	}
 }
-
-// Activate dev mode to disable caching on controller files
-Arati.devMode = true;
-
-// Run the router
-var router = new Router();
-Arati.setRouter(router);
-
-// Register routes
-//router.registerRoute("/example", "NameOfTheControllerAratiCalls", "PathToView", "exampleController OR js/cor/controller");
-router.registerRoute("/", "HomeController", "views/home.html", "HomeController");
-router.registerRoute("/dashboard", "DashboardController", "views/dashboard.html", "DashboardController");
-router.registerRoute("/shows", "ShowController", "views/shows/shows.html", "ShowController");
-
-// TODO
-//router.registerRoute("/shows/{slug}-{id}", "ShowController", "views/shows/show.html", "ShowController");
-
-router.start();

@@ -39,11 +39,8 @@ function Request(url, success) {
     		if (xmlhttp.status == 200) {
     			success(xmlhttp.responseText);
     		}
-    		else if (xmlhttp.status == 400) {
-    			alert('There was an error 400')
-    		}
     		else {
-    			alert('something else other than 200 was returned')
+    			console.log("An error occured during the Request.");
     		}
     	}
     }

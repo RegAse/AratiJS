@@ -82,14 +82,13 @@ Utility.ReplaceWithVariables = function(html, model) {
 	}
 	return html;
 }
-Utility.resolve = function(cur, ns) {
-    ns = ns.split('.');
+Utility.resolve = function(current, next) {
+	next = next.split('.');
 
-    while (cur && ns[0])
-        cur = cur[ns.shift()];
-
-    return cur;
-
+	while (current && next[0]) {
+		current = current[next.shift()];
+	}
+	return current;
 }
 Utility.regexReplaceWithVariable = function(html, model, refrenceName) {
 	if (html != null) {
@@ -133,24 +132,41 @@ View.prototype = {
 		var renderViews = document.querySelectorAll('[render-views]');
 		if (renderViews.length == 1) {
 			var view = renderViews[0];
-			//var descendants = this.getAllRegularDescendants(view);
-			//console.log(descendants);
-			var descendants = ElementProcessor.getAllChildrenLessChildrenWithoutAttributes(view);
+			var queue = []
+			for (var i = view.childNodes.length - 1; i >= 0; i--) {
+				queue.push(view.childNodes[i]);
+			}
+			while (queue.length > 0)
+			{
+				for (var i = queue.length - 1; i >= 0; i--) {
+					var element = queue.pop();
+					if (element.nodeName != "#text" && element.children.length == 0 && element.getAttribute("ar-foreach") == null) {
+						// console.log(element);
+						var html = element.innerHTML;
 
-			// Loop through all child nodes.
-			for (var i = 0; i < descendants.length; i++) {
-				var html = descendants[i].innerHTML;
+						if (html != null) {
+							
+							html = Utility.regexReplaceWithVariable(html, this.route.controller);
 
-				if (html != null && descendants[i].getAttribute("ar-foreach") == null) {
-					
-					html = Utility.regexReplaceWithVariable(html, this.route.controller);
+							element.innerHTML = html;
 
-					descendants[i].innerHTML = html;
-				}
-				else if (descendants[i].nodeName = "#text") {
-					var tex = descendants[i].data;
-					var text = Utility.regexReplaceWithVariable(tex, this.route.controller["numbers"][0]);
-					descendants[i].data = text;
+							// NEED TO PROCESS ATTRIBUTES
+							for (var i = element.attributes.length - 1; i >= 0; i--) {
+								var attribute = element.attributes[i];
+								attribute.value = Utility.regexReplaceWithVariable(attribute.value, this.route.controller);
+							}
+						}
+					}
+					else if (element.nodeName != "#text" && element.getAttribute("ar-foreach") == null) {
+						for (var i2 = element.childNodes.length - 1; i2 >= 0; i2--) {
+							queue.push(element.childNodes[i2]);
+						}
+					}
+					else if (element.nodeName == "#text" && element.data != null && element.data.trim().length != 0) {
+						var tex = element.data;
+						var text = Utility.regexReplaceWithVariable(tex, this.route.controller);
+						element.data = text;
+					}
 				}
 			}
 		}
@@ -158,14 +174,27 @@ View.prototype = {
 	populateElement: function(element, context, as) {
 		if (element.nodeName != "#text") {
 			element.innerHTML = Utility.regexReplaceWithVariable(element.innerHTML, context, as);
+
+			this.populateElementAttributes(element, context, as);
 		}
 		else {
 			element.data = Utility.regexReplaceWithVariable(element.data, context, as);
 		}
 	},
-	populateElements: function(elements, context, as) {
-		for (var i = elements.length - 1; i >= 0; i--) {
-			this.populateElement(elements[i], context, as);
+	populateElementAttributes: function(element, context, as) {
+		// NEED TO PROCESS ATTRIBUTES
+		for (var i = element.attributes.length - 1; i >= 0; i--) {
+			var attribute = element.attributes[i];
+			attribute.value = Utility.regexReplaceWithVariable(attribute.value, context, as);
+		}
+	},
+	populateElements: function(elementsObj, context, as) {
+		for (var i = elementsObj["nonParentElements"].length - 1; i >= 0; i--) {
+			this.populateElement(elementsObj["nonParentElements"][i], context, as);
+		}
+
+		for (var i2 = elementsObj["parentElements"].length - 1; i2 >= 0; i2--) {
+			this.populateElementAttributes(elementsObj["parentElements"][i2], context, as);
 		}
 	},
 	populateForeach: function(eachElement, context) {
@@ -181,10 +210,10 @@ View.prototype = {
 
 			eachElement.parentNode.insertBefore(clone, eachElement.nextSibling);
 
-			var elements = ElementProcessor.getAllChildrenLessChildrenWithoutAttributes(clone);
+			var elementsObj = ElementProcessor.getAllChildren(clone);
 
 			// Elements to populate inside foreach.
-			this.populateElements(elements, context[propertyName][x], as);
+			this.populateElements(elementsObj, context[propertyName][x], as);
 
 			// Then check if the element has another foreach then process those
 			var eachElements = ElementProcessor.getAllChildrenWithAttribute(clone, "ar-foreach");
@@ -196,8 +225,6 @@ View.prototype = {
 		eachElement.style.display = "none";
 	},
 	populateAllForeach: function() {
-		// Populate a foreach
-		/* Need to allow for foreach inside a foreach */
 		var eachElement = document.querySelectorAll("[render-views]")[0];
 		var eachElements = ElementProcessor.getAllChildrenWithAttribute(eachElement, "ar-foreach");
 		for (var i = eachElements.length - 1; i >= 0; i--) {
@@ -214,7 +241,7 @@ View.prototype = {
 		renderViews[0].innerHTML = this.raw;
 		this.storeElements();
 		this.populate();
-		this.populateAllForeach();
+		//this.populateAllForeach();
 	},
 	storeElements: function() {
 		var dict = {}
@@ -351,37 +378,39 @@ var ElementProcessor = {
 		}
 		return allDescendants;
 	},
-	getAllChildrenLessChildrenWithoutAttributes: function(element, ignoreWithAttributes) {
+	/* 
+	  Gets all elements that don't have children and and return them in separate 
+	  array from the ones that have children.
+	*/
+	getAllChildren: function(element) {
 		// Get all nodes that don't have children.
-		var allDescendants = [];
+		var nonParentElements = [];
+		var parentElements = [];
+
 		var queue = []
 		for (var i = element.childNodes.length - 1; i >= 0; i--) {
 			queue.push(element.childNodes[i]);
 		}
 		while (queue.length > 0)
 		{
+			var child = queue.pop();
 			for (var i = queue.length - 1; i >= 0; i--) {
-				if (queue[i].nodeName != "#text" && queue[i].children.length == 0 && queue[i].getAttribute("ar-foreach") == null) {
-					// console.log(queue[i]);
-					allDescendants.push(queue[i]);
+				if (child.nodeName != "#text" && child.children.length == 0 && child.getAttribute("ar-foreach") == null) {
+					nonParentElements.push(child);
 				}
-				else if (queue[i].nodeName != "#text" && queue[i].getAttribute("ar-foreach") == null) {
-					for (var i2 = queue[i].childNodes.length - 1; i2 >= 0; i2--) {
-						queue.push(queue[i].childNodes[i2]);
+				else if (child.nodeName != "#text" && child.getAttribute("ar-foreach") == null) {
+					parentElements.push(child);
+					for (var i2 = child.childNodes.length - 1; i2 >= 0; i2--) {
+						queue.push(child.childNodes[i2]);
 					}
 				}
 
-				if (queue[i].nodeName == "#text" && queue[i].data != null) {
-					// console.log("This is a text node: " + queue[i].data);
-					allDescendants.push(queue[i]);
-				}
-
-				if (i > -1) {
-					queue.splice(i, 1);
+				if (child.nodeName == "#text" && child.data != null) {
+					nonParentElements.push(child);
 				}
 			}
 		}
-		return allDescendants;
+		return {"nonParentElements": nonParentElements, "parentElements": parentElements};
 	},
 	getAllChildrenLessChildren: function() {
 		// Get all nodes that don't have children.

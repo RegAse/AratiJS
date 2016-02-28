@@ -129,9 +129,12 @@ function View(view, route) {
 
 View.prototype = {
 	populate: function() {
-		var renderViews = document.querySelectorAll('[render-views]');
-		if (renderViews.length == 1) {
-			var view = renderViews[0];
+		//var renderViews = document.querySelectorAll('[render-views]');
+		var div = document.createElement('div');
+		div.innerHTML = this.raw;
+
+		if (true) {
+			var view = div;
 			var queue = []
 			for (var i = view.childNodes.length - 1; i >= 0; i--) {
 				queue.push(view.childNodes[i]);
@@ -170,6 +173,7 @@ View.prototype = {
 				}
 			}
 		}
+		document.querySelector('[render-views]').innerHTML = div.innerHTML;
 	},
 	populateElement: function(element, context, as) {
 		if (element.nodeName != "#text") {
@@ -236,12 +240,24 @@ View.prototype = {
 			}
 		}
 	},
+	populateAllElements: function() {
+		this.populate();	
+		this.populateAllForeach();
+	},
+	/* Executes when the view has loaded*/
 	load: function() {
+		console.log("Loaded");
 		var renderViews = document.querySelectorAll('[render-views]');
-		renderViews[0].innerHTML = this.raw;
-		this.storeElements();
-		this.populate();
-		//this.populateAllForeach();
+		//renderViews[0].innerHTML = this.raw;
+		//this.storeElements();
+		//console.log(this.route.controller);
+		if (this.route.controller.init != null) {
+			var bound = this.populateAllElements.bind(this);
+			this.route.controller.init(bound);
+		}
+		else {
+			this.populateAllElements();
+		}
 	},
 	storeElements: function() {
 		var dict = {}
@@ -263,6 +279,7 @@ View.prototype = {
 function Router() {
 	this.routes = [];
 	this.currentRoute = {};
+	this.routeParams = {};
 
 	var that = this;
 	window.addEventListener('hashchange', function() {
@@ -285,8 +302,34 @@ Router.prototype = {
 	},
 	findRoute: function(url) {
 		for (var i = this.routes.length - 1; i >= 0; i--) {
-			if (this.routes[i].url == url) {
-				return this.routes[i];
+			var routeUrl = this.routes[i].url;
+			var routeParams = {};
+			
+			var urlSplit = url.split('/');
+			var routeSplitUrl = routeUrl.split('/');
+			if (routeSplitUrl.length == urlSplit.length) {
+				var possible = true;
+
+				// Check if this is the route if so return it
+				for (var i2 = 1; i2 < routeSplitUrl.length; i2++) {
+					if (routeSplitUrl[i2] != urlSplit[i2] && !~routeSplitUrl[i2].indexOf('{')) {
+						possible = false;
+						break;
+					}
+					if (~routeSplitUrl[i2].indexOf('{')) {
+						var routeParams1 = routeSplitUrl[i2].split(/\{(.*?)}/);
+						for (var par1 = routeParams1.length - 1; par1 >= 0; par1--) {
+							if (routeParams1[par1] != "") {
+								// Need to fix having two in a single slash.
+								routeParams[routeParams1[par1]] = urlSplit[i2];
+							}
+						}
+					}
+				}
+				if (possible) {
+					this.routes[i]["routeParams"] = routeParams;
+					return this.routes[i];
+				}
 			}
 		}
 		return false;

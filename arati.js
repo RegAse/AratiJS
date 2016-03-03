@@ -86,7 +86,21 @@ Utility.resolve = function(current, next) {
 	next = next.split('.');
 
 	while (current && next[0]) {
-		current = current[next.shift()];
+		var nh = next.shift();
+		if (current[nh] == undefined) {
+			var spli = nh.split("(");
+			var functionName = spli[0];
+			var args = spli[1].replace(')', '').split(',');
+			for (var i = args.length - 1; i >= 0; i--) {
+				args[i] = args[i].trim();
+			}
+
+			var s = current[functionName].apply(current, args);
+			return s;
+		}
+		else {
+			current = current[nh];
+		}
 	}
 	return current;
 }
@@ -98,7 +112,6 @@ Utility.regexReplaceWithVariable = function(html, model, refrenceName) {
 
 		if (match != null) {
 			for (var x = match.length - 1; x >= 0; x--) {
-				var regex = new RegExp(match[x], 'gi');
 				var variable = match[x].replace('{{', '');
 
 				variable = variable.replace('}}', '');
@@ -129,7 +142,7 @@ function View(view, route) {
 
 View.prototype = {
 	populate: function() {
-		//var renderViews = document.querySelectorAll('[render-views]');
+		//var renderViews = document.querySelectorAll('[render-view]');
 		var div = document.createElement('div');
 		div.innerHTML = this.raw;
 
@@ -143,7 +156,7 @@ View.prototype = {
 			{
 				for (var i = queue.length - 1; i >= 0; i--) {
 					var element = queue.pop();
-					if (element.nodeName != "#text" && element.children.length == 0 && element.getAttribute("ar-foreach") == null) {
+					if (element.nodeName != "#text" && element.nodeName != "#comment" && element.children.length == 0 && element.getAttribute("ar-foreach") == null) {
 						// console.log(element);
 						var html = element.innerHTML;
 
@@ -160,7 +173,7 @@ View.prototype = {
 							}
 						}
 					}
-					else if (element.nodeName != "#text" && element.getAttribute("ar-foreach") == null) {
+					else if (element.nodeName != "#text" && element.nodeName != "#comment" && element.getAttribute("ar-foreach") == null) {
 						for (var i2 = element.childNodes.length - 1; i2 >= 0; i2--) {
 							queue.push(element.childNodes[i2]);
 						}
@@ -173,7 +186,7 @@ View.prototype = {
 				}
 			}
 		}
-		document.querySelector('[render-views]').innerHTML = div.innerHTML;
+		document.querySelector('[render-view]').innerHTML = div.innerHTML;
 	},
 	populateElement: function(element, context, as) {
 		if (element.nodeName != "#text") {
@@ -229,7 +242,7 @@ View.prototype = {
 		eachElement.style.display = "none";
 	},
 	populateAllForeach: function() {
-		var eachElement = document.querySelectorAll("[render-views]")[0];
+		var eachElement = document.querySelectorAll("[render-view]")[0];
 		var eachElements = ElementProcessor.getAllChildrenWithAttribute(eachElement, "ar-foreach");
 		for (var i = eachElements.length - 1; i >= 0; i--) {
 			try{
@@ -247,7 +260,7 @@ View.prototype = {
 	/* Executes when the view has loaded*/
 	load: function() {
 		console.log("Loaded");
-		var renderViews = document.querySelectorAll('[render-views]');
+		var renderViews = document.querySelectorAll('[render-view]');
 		//renderViews[0].innerHTML = this.raw;
 		//this.storeElements();
 		//console.log(this.route.controller);
@@ -386,10 +399,10 @@ var ElementProcessor = {
 		while (queue.length > 0)
 		{
 			for (var i = queue.length - 1; i >= 0; i--) {
-				if (queue[i].nodeName != "#text" && queue[i].getAttribute(attribute) != null) {
+				if (queue[i].nodeName != "#text" && queue[i].nodeName != "#comment" && queue[i].getAttribute(attribute) != null) {
 					allDescendants.push(queue[i]);
 				}
-				else if (queue[i].nodeName != "#text" && queue[i].getAttribute(attribute) == null) {
+				else if (queue[i].nodeName != "#text" && queue[i].nodeName != "#comment" && queue[i].getAttribute(attribute) == null) {
 					for (var i2 = queue[i].children.length - 1; i2 >= 0; i2--) {
 						queue.push(queue[i].children[i2]);
 					}
@@ -457,7 +470,7 @@ var ElementProcessor = {
 	},
 	getAllChildrenLessChildren: function() {
 		// Get all nodes that don't have children.
-		var element = document.querySelector("[render-views]");
+		var element = document.querySelector("[render-view]");
 		var allDescendants = [];
 		var queue = [element]
 		while (queue.length > 0)

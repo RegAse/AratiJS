@@ -21,31 +21,59 @@ Arati.prototype = {
 // Initialize Arati
 var Arati = new Arati();
 
-function Request(url, success) {
-	console.log("Requesting url: " + url);
-	var xmlhttp;
+/*
+ * Performs http/https requests
+*/
+function Request() {
 
-	if (window.XMLHttpRequest) {
-		// code for IE7+, Firefox, Chrome, Opera, Safari
-		xmlhttp = new XMLHttpRequest();
-	} else {
-		// code for IE6, IE5
-		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-	}
-
-    xmlhttp.onreadystatechange = function() {
-    	if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
-    		if (xmlhttp.status == 200) {
-    			success(xmlhttp.responseText);
-    		}
-    		else {
-    			console.log("An error occured during the Request.");
-    		}
-    	}
-    }
-    xmlhttp.open("GET", url, true);
-    xmlhttp.send();
 }
+
+Request.prototype = {
+	get: function(url, success, info) {
+		console.log("Requesting url: " + url);
+		var xmlhttp;
+
+		if (window.XMLHttpRequest) {
+			// code for IE7+, Firefox, Chrome, Opera, Safari
+			xmlhttp = new XMLHttpRequest();
+		} else {
+			// code for IE6, IE5
+			xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		}
+
+	    xmlhttp.onreadystatechange = function() {
+	    	if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+	    		if (xmlhttp.status == 200) {
+	    			success(xmlhttp.responseText, info);
+	    		}
+	    		else {
+	    			console.log("An error occured during the Request.");
+	    		}
+	    	}
+	    }
+	    xmlhttp.open("GET", url, true);
+	    xmlhttp.send();
+	},
+	getAll: function(urlsObject, success) {
+		var res = {};
+		var checkins = 0;
+		var done = false;
+		var urlsObjectLen = 0;
+		for(var propertyName in urlsObject) {
+			urlsObjectLen++;
+			Request.get(urlsObject[propertyName], function(response, info) {
+				checkins++;
+				res[info] = response;
+				if (done && checkins == urlsObjectLen) {
+					success(res);
+				}
+			}, propertyName);
+		}
+		done = true;
+	}
+}
+
+var Request = new Request();
 
 function Utility() {
 	
@@ -134,10 +162,15 @@ Utility.regexReplaceWithVariable = function(html, model, refrenceName) {
 	return html;
 }
 
+/*
+	Stores info about the current view and
+	can update the view in-part or fully.
+*/
 function View(view, route) {
 	this.raw = view;
 	this.route = route;
 	this.dict = {};
+	this.refs = {};
 }
 
 View.prototype = {
@@ -145,7 +178,7 @@ View.prototype = {
 		//var renderViews = document.querySelectorAll('[render-view]');
 		var div = document.createElement('div');
 		div.innerHTML = this.raw;
-
+		
 		if (true) {
 			var view = div;
 			var queue = []
@@ -220,7 +253,7 @@ View.prototype = {
 		var as = temp[1];
 
 		console.log("Processing: " + propertyName + " as: " + as);
-		
+
 		// do this x many times
 		for (var x = context[propertyName].length - 1; x >= 0; x--) {
 			var clone = eachElement.cloneNode(true);
@@ -228,6 +261,7 @@ View.prototype = {
 			eachElement.parentNode.insertBefore(clone, eachElement.nextSibling);
 
 			var elementsObj = ElementProcessor.getAllChildren(clone);
+			console.log(elementsObj);
 
 			// Elements to populate inside foreach.
 			this.populateElements(elementsObj, context[propertyName][x], as);
@@ -349,7 +383,7 @@ Router.prototype = {
 	},
 	LoadCurrentRoute: function(render, loadController) {
 		var that = this;
-		Request(this.currentRoute.viewPath, function(response) {
+		Request.get(this.currentRoute.viewPath, function(response) {
 			// Succesfully loaded the view.
 
 			// Create a new view.
@@ -439,7 +473,6 @@ var ElementProcessor = {
 	  array from the ones that have children.
 	*/
 	getAllChildren: function(element) {
-		// Get all nodes that don't have children.
 		var nonParentElements = [];
 		var parentElements = [];
 
@@ -450,20 +483,17 @@ var ElementProcessor = {
 		while (queue.length > 0)
 		{
 			var child = queue.pop();
-			for (var i = queue.length - 1; i >= 0; i--) {
-				if (child.nodeName != "#text" && child.children.length == 0 && child.getAttribute("ar-foreach") == null) {
-					nonParentElements.push(child);
+			if (child.nodeName != "#text" && child.children.length == 0 && child.getAttribute("ar-foreach") == null) {
+				nonParentElements.push(child);
+			}
+			else if (child.nodeName != "#text" && child.getAttribute("ar-foreach") == null) {
+				parentElements.push(child);
+				for (var i2 = child.childNodes.length - 1; i2 >= 0; i2--) {
+					queue.push(child.childNodes[i2]);
 				}
-				else if (child.nodeName != "#text" && child.getAttribute("ar-foreach") == null) {
-					parentElements.push(child);
-					for (var i2 = child.childNodes.length - 1; i2 >= 0; i2--) {
-						queue.push(child.childNodes[i2]);
-					}
-				}
-
-				if (child.nodeName == "#text" && child.data != null) {
-					nonParentElements.push(child);
-				}
+			}
+			if (child.nodeName == "#text") {
+				nonParentElements.push(child);
 			}
 		}
 		return {"nonParentElements": nonParentElements, "parentElements": parentElements};

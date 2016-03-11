@@ -254,22 +254,23 @@ View.prototype = {
 
 		console.log("Processing: " + propertyName + " as: " + as);
 
+		var varia = Utility.resolve(context, propertyName);
+		
 		// do this x many times
-		for (var x = context[propertyName].length - 1; x >= 0; x--) {
+		for (var x = varia.length - 1; x >= 0; x--) {
 			var clone = eachElement.cloneNode(true);
 
 			eachElement.parentNode.insertBefore(clone, eachElement.nextSibling);
 
 			var elementsObj = ElementProcessor.getAllChildren(clone);
-			console.log(elementsObj);
 
 			// Elements to populate inside foreach.
-			this.populateElements(elementsObj, context[propertyName][x], as);
+			this.populateElements(elementsObj, varia[x], as);
 
 			// Then check if the element has another foreach then process those
 			var eachElements = ElementProcessor.getAllChildrenWithAttribute(clone, "ar-foreach");
 			for (var i = eachElements.length - 1; i >= 0; i--) {
-				this.populateForeach(eachElements[i], context[propertyName][x]);
+				this.populateForeach(eachElements[i], varia[x]);
 			}
 		}
 
@@ -283,7 +284,7 @@ View.prototype = {
 				this.populateForeach(eachElements[i], this.route.controller);
 			} catch(err)
 			{
-				console.log("[Arati ERROR] a variable was undefined when trying to run the foreach loop.");
+				console.log("[Arati ERROR] a variable was undefined when trying to run the foreach loop." + err);
 			}
 		}
 	},

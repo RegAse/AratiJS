@@ -75,6 +75,8 @@ Request.prototype = {
 
 var Request = new Request();
 
+/* Utility */
+
 function Utility() {
 	
 }
@@ -89,27 +91,57 @@ Utility.AddScriptToDOM = function(url, onload) {
 	// TODO: FIX:ANNOYING CACHE PROBLEM
 }
 
-Utility.ReplaceWithVariables = function(html, model) {
-	var regex = new RegExp('{{(.*)}}', 'gi');
-	var match = html.match(regex);
-	if (match != null) {
-		for (var i = match.length - 1; i >= 0; i--) {
-			var regex = new RegExp(match[i], 'gi');
-			var variable = match[i].replace('{{', '');
+/**
+ * Replaces all instances of {{variable}} with 
+ * the corresponding variable from the model
+ * @param {String} text 
+ * @param {Object} model
+ * @return {String} processedText
+ */
+Utility.ReplaceWithVariables = function(text, model) {
+	var i = 0, opening = 0, closing = 0, newText = "";
 
-			variable = variable.replace('}}', '');
-			variable = variable.trim();
+	// Run through the string
+	while(i < text.length) {
+		if (text[i] == "{" && text[i + 1] == "{") {
+			opening = i;
+			// jump over '{{'
+			i += 2;
+		}
+		else if (text[i] == "}" && text[i + 1] == "}") {
+			var oper = text.substring(opening + 2, i).trim();
 
-			if (typeof model[variable] == 'function') {
-				html = html.replace(regex, model[variable]())
-			}
-			else {
-				html = html.replace(regex, model[variable]);
-			}
+			// I replace the string with a value from the model
+			oper = model[oper];
+
+			// Add the text that came before the opening of the tag.
+			newText += text.substring(closing, opening);
+			// Then add the value of the variable/function..
+			newText += oper;
+
+			closing = i + 2;
+			// jump over '}}'
+			i += 2;
+		}
+		else {
+			// Iterate normaly through the string.
+			i += 1;
 		}
 	}
-	return html;
+	// Then finally add the ending of the string which comes after the last '}}'
+	newText += text.substring(closing, text.length);
+	return newText;
 }
+
+/**
+ * TODO: Make function more readable
+ *
+ * Resolves a variable or a call to
+ * a function in a object
+ * @param {Object} current
+ * @param {String} next
+ * @return {Object} current 
+ */
 Utility.resolve = function(current, next) {
 	next = next.split('.');
 
@@ -132,6 +164,7 @@ Utility.resolve = function(current, next) {
 	}
 	return current;
 }
+
 Utility.regexReplaceWithVariable = function(html, model, refrenceName) {
 	if (html != null) {
 		// Find all the variables in this element
@@ -265,6 +298,7 @@ View.prototype = {
 			var elementsObj = ElementProcessor.getAllChildren(clone);
 
 			// Elements to populate inside foreach.
+			// NEED TO FIND A WAY TO ALLOW FOR controller from propertyname
 			this.populateElements(elementsObj, varia[x], as);
 
 			// Then check if the element has another foreach then process those

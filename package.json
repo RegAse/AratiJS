@@ -1,0 +1,23 @@
+{
+  "name": "arati-javascript-framework",
+  "version": "1.0.0",
+  "description": "A javascript framework",
+  "main": "arati.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RegAse/AratiJS.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RegAse/AratiJS/issues"
+  },
+  "homepage": "https://github.com/RegAse/AratiJS#readme",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-uglify": "^1.5.3"
+  }
+}

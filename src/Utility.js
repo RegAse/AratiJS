@@ -19,9 +19,11 @@ Utility.AddScriptToDOM = function(url, onload) {
  * the corresponding variable from the model
  * @param {String} text 
  * @param {Object} model
+ * @param {Object} otherModel
+ * @param {String} priorityContextName
  * @return {String} processedText
  */
-Utility.ReplaceWithVariables = function(text, model) {
+Utility.replaceWithVariables = function(text, model, otherModel, priorityContextName) {
 	var i = 0, opening = 0, closing = 0, newText = "";
 
 	// Run through the string
@@ -33,12 +35,30 @@ Utility.ReplaceWithVariables = function(text, model) {
 		}
 		else if (text[i] == "}" && text[i + 1] == "}") {
 			var oper = text.substring(opening + 2, i).trim();
+			var fnIndex = oper.indexOf('.');
+			var firstName = oper.substring(0, fnIndex);
 
-			// I replace the string with a value from the model
-			oper = model[oper];
+			// Check if the variable is from the model or the controller
+			if (firstName == priorityContextName) {
+				// Need to remove the prefix of the variable name
+				oper = oper.substring(fnIndex + 1, oper.length);
+
+				// replace the string with a value from the model
+				oper = Utility.resolve(otherModel, oper);
+			}
+			else {
+				// replace the string with a value from the controller
+				oper = Utility.resolve(model, oper);
+				if (oper == undefined) {
+					console.log("WARNING THIS SHOULD NOT HAPPEN");
+					console.log(model);
+					console.log(oper);
+				};
+			}
 
 			// Add the text that came before the opening of the tag.
 			newText += text.substring(closing, opening);
+
 			// Then add the value of the variable/function..
 			newText += oper;
 
@@ -86,34 +106,4 @@ Utility.resolve = function(current, next) {
 		}
 	}
 	return current;
-}
-
-Utility.regexReplaceWithVariable = function(html, model, refrenceName) {
-	if (html != null) {
-		// Find all the variables in this element
-		var regex = new RegExp('{{(.*)}}', 'gi');
-		var match = html.match(regex);
-
-		if (match != null) {
-			for (var x = match.length - 1; x >= 0; x--) {
-				var variable = match[x].replace('{{', '');
-
-				variable = variable.replace('}}', '');
-				variable = variable.trim();
-
-				//Remove the refrence name
-				if (refrenceName != null && refrenceName != "") {
-					variable = variable.replace(refrenceName + ".", "");
-				}
-
-				if (typeof model[variable] == 'function') {
-					html = html.replace(regex, model[variable]())
-				}
-				else {
-					html = html.replace(regex, Utility.resolve(model, variable));
-				}
-			}
-		}
-	}
-	return html;
 }

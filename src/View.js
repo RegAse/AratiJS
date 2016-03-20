@@ -31,14 +31,14 @@ View.prototype = {
 
 						if (html != null) {
 							
-							html = Utility.regexReplaceWithVariable(html, this.route.controller);
+							html = Utility.replaceWithVariables(html, this.route.controller);
 
 							element.innerHTML = html;
 
 							// NEED TO PROCESS ATTRIBUTES
 							for (var i = element.attributes.length - 1; i >= 0; i--) {
 								var attribute = element.attributes[i];
-								attribute.value = Utility.regexReplaceWithVariable(attribute.value, this.route.controller);
+								attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller);
 							}
 						}
 					}
@@ -49,7 +49,7 @@ View.prototype = {
 					}
 					else if (element.nodeName == "#text" && element.data != null && element.data.trim().length != 0) {
 						var tex = element.data;
-						var text = Utility.regexReplaceWithVariable(tex, this.route.controller);
+						var text = Utility.replaceWithVariables(tex, this.route.controller);
 						element.data = text;
 					}
 				}
@@ -57,33 +57,35 @@ View.prototype = {
 		}
 		document.querySelector('[render-view]').innerHTML = div.innerHTML;
 	},
-	populateElement: function(element, context, as) {
+	populateElement: function(element, context, priorityContextName) {
 		if (element.nodeName != "#text") {
-			element.innerHTML = Utility.regexReplaceWithVariable(element.innerHTML, context, as);
+			element.innerHTML = Utility.replaceWithVariables(element.innerHTML, this.route.controller, context, priorityContextName);
 
-			this.populateElementAttributes(element, context, as);
+			this.populateElementAttributes(element, context, priorityContextName);
 		}
 		else {
-			element.data = Utility.regexReplaceWithVariable(element.data, context, as);
+			element.data = Utility.replaceWithVariables(element.data, this.route.controller, context, priorityContextName);
 		}
 	},
-	populateElementAttributes: function(element, context, as) {
+	populateElementAttributes: function(element, context, priorityContextName) {
 		// NEED TO PROCESS ATTRIBUTES
 		for (var i = element.attributes.length - 1; i >= 0; i--) {
 			var attribute = element.attributes[i];
-			attribute.value = Utility.regexReplaceWithVariable(attribute.value, context, as);
+			attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller, context, priorityContextName);
 		}
 	},
-	populateElements: function(elementsObj, context, as) {
+	populateElements: function(elementsObj, context, priorityContextName) {
+		console.log("Populate Elements: the PriorityContextName = " + priorityContextName);
+
 		for (var i = elementsObj["nonParentElements"].length - 1; i >= 0; i--) {
-			this.populateElement(elementsObj["nonParentElements"][i], context, as);
+			this.populateElement(elementsObj["nonParentElements"][i], context, priorityContextName);
 		}
 
 		for (var i2 = elementsObj["parentElements"].length - 1; i2 >= 0; i2--) {
-			this.populateElementAttributes(elementsObj["parentElements"][i2], context, as);
+			this.populateElementAttributes(elementsObj["parentElements"][i2], context, priorityContextName);
 		}
 	},
-	populateForeach: function(eachElement, context) {
+	populateForeach: function(eachElement, context, controller) {
 		var temp = eachElement.getAttribute("ar-foreach").split(" as ");
 		var propertyName = temp[0];
 		var as = temp[1];
@@ -94,6 +96,7 @@ View.prototype = {
 		
 		// do this x many times
 		for (var x = varia.length - 1; x >= 0; x--) {
+			// Clone a html element
 			var clone = eachElement.cloneNode(true);
 
 			eachElement.parentNode.insertBefore(clone, eachElement.nextSibling);
@@ -101,13 +104,12 @@ View.prototype = {
 			var elementsObj = ElementProcessor.getAllChildren(clone);
 
 			// Elements to populate inside foreach.
-			// NEED TO FIND A WAY TO ALLOW FOR controller from propertyname
 			this.populateElements(elementsObj, varia[x], as);
 
 			// Then check if the element has another foreach then process those
 			var eachElements = ElementProcessor.getAllChildrenWithAttribute(clone, "ar-foreach");
 			for (var i = eachElements.length - 1; i >= 0; i--) {
-				this.populateForeach(eachElements[i], varia[x]);
+				this.populateForeach(eachElements[i], varia[x], controller);
 			}
 		}
 
@@ -118,7 +120,7 @@ View.prototype = {
 		var eachElements = ElementProcessor.getAllChildrenWithAttribute(eachElement, "ar-foreach");
 		for (var i = eachElements.length - 1; i >= 0; i--) {
 			try{
-				this.populateForeach(eachElements[i], this.route.controller);
+				this.populateForeach(eachElements[i], this.route.controller, this.route.controller);
 			} catch(err)
 			{
 				console.log("[Arati ERROR] a variable was undefined when trying to run the foreach loop." + err);

@@ -212,46 +212,45 @@ function View(view, route) {
 }
 
 View.prototype = {
+	/*
+		Populates the basic values inside a template
+	*/
 	populate: function() {
-		//var renderViews = document.querySelectorAll('[render-view]');
-		
-		if (true) {
-			var view = this.viewElement;
-			var queue = []
-			for (var i = view.childNodes.length - 1; i >= 0; i--) {
-				queue.push(view.childNodes[i]);
-			}
-			while (queue.length > 0)
-			{
-				for (var i = queue.length - 1; i >= 0; i--) {
-					var element = queue.pop();
-					if (element.nodeName != "#text" && element.nodeName != "#comment" && element.children.length == 0 && element.getAttribute("ar-foreach") == null) {
-						// console.log(element);
-						var html = element.innerHTML;
+		var view = this.viewElement;
+		var queue = []
+		for (var i = view.childNodes.length - 1; i >= 0; i--) {
+			queue.push(view.childNodes[i]);
+		}
+		while (queue.length > 0)
+		{
+			for (var i = queue.length - 1; i >= 0; i--) {
+				var element = queue.pop();
+				if (element.nodeName != "#text" && element.nodeName != "#comment" && element.children.length == 0 && element.getAttribute("ar-foreach") == null) {
+					// console.log(element);
+					var html = element.innerHTML;
 
-						if (html != null) {
-							
-							html = Utility.replaceWithVariables(html, this.route.controller);
+					if (html != null) {
+						
+						html = Utility.replaceWithVariables(html, this.route.controller);
 
-							element.innerHTML = html;
+						element.innerHTML = html;
 
-							// NEED TO PROCESS ATTRIBUTES
-							for (var i = element.attributes.length - 1; i >= 0; i--) {
-								var attribute = element.attributes[i];
-								attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller);
-							}
+						// NEED TO PROCESS ATTRIBUTES
+						for (var i = element.attributes.length - 1; i >= 0; i--) {
+							var attribute = element.attributes[i];
+							attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller);
 						}
 					}
-					else if (element.nodeName != "#text" && element.nodeName != "#comment" && element.getAttribute("ar-foreach") == null) {
-						for (var i2 = element.childNodes.length - 1; i2 >= 0; i2--) {
-							queue.push(element.childNodes[i2]);
-						}
+				}
+				else if (element.nodeName != "#text" && element.nodeName != "#comment" && element.getAttribute("ar-foreach") == null) {
+					for (var i2 = element.childNodes.length - 1; i2 >= 0; i2--) {
+						queue.push(element.childNodes[i2]);
 					}
-					else if (element.nodeName == "#text" && element.data != null && element.data.trim().length != 0) {
-						var tex = element.data;
-						var text = Utility.replaceWithVariables(tex, this.route.controller);
-						element.data = text;
-					}
+				}
+				else if (element.nodeName == "#text" && element.data != null && element.data.trim().length != 0) {
+					var tex = element.data;
+					var text = Utility.replaceWithVariables(tex, this.route.controller);
+					element.data = text;
 				}
 			}
 		}
@@ -259,6 +258,17 @@ View.prototype = {
 		el.innerHTML = "";
 		el.appendChild(this.viewElement);
 	},
+	/**
+	 * Populates all instances of {{variable}} inside
+	 * a HTML element the corresponding variable 
+	 * from the context and you can specify a 
+	 * priorityContextName, so it will process it
+	 * from that name as context[priorityContextName][..][variable[i]]
+	 * @param {Element} element
+	 * @param {Object} context
+	 * @param {String} priorityContextName
+	 * @return 
+	 */
 	populateElement: function(element, context, priorityContextName) {
 		if (element.nodeName != "#text") {
 			element.innerHTML = Utility.replaceWithVariables(element.innerHTML, this.route.controller, context, priorityContextName);
@@ -269,6 +279,17 @@ View.prototype = {
 			element.data = Utility.replaceWithVariables(element.data, this.route.controller, context, priorityContextName);
 		}
 	},
+	/**
+	 * Populates all instances of {{variable}} inside 
+	 * attributes with the corresponding variable from 
+	 * the context and you can specify a 
+	 * priorityContextName, so it will process it
+	 * from that name as context[priorityContextName][..][variable[i]]
+	 * @param {Element} element 
+	 * @param {Object} context
+	 * @param {String} priorityContextName
+	 * @return 
+	 */
 	populateElementAttributes: function(element, context, priorityContextName) {
 		// NEED TO PROCESS ATTRIBUTES
 		for (var i = element.attributes.length - 1; i >= 0; i--) {
@@ -276,6 +297,7 @@ View.prototype = {
 			attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller, context, priorityContextName);
 		}
 	},
+	/* A parent function for the populateElement */
 	populateElements: function(elementsObj, context, priorityContextName) {
 		console.log("Populate Elements: the PriorityContextName = " + priorityContextName);
 
@@ -287,11 +309,13 @@ View.prototype = {
 			this.populateElementAttributes(elementsObj["parentElements"][i2], context, priorityContextName);
 		}
 	},
+	/* Removes old elements/text generated by a foreach loop */
 	removeOldForeachElements: function(propertyName) {
 		for (var i = this.refs[propertyName].length - 1; i >= 0; i--) {
 			this.refs[propertyName][i].remove();
 		}
 	},
+	/* Populates a ar-foreach element with data from the controller/model */
 	populateForeach: function(eachElement, context, controller) {
 		var temp = eachElement.getAttribute("ar-foreach").split(" as ");
 		var propertyName = temp[0];
@@ -342,6 +366,7 @@ View.prototype = {
 
 		eachElement.style.display = "none";
 	},
+	/* Parent function for populateForeach */
 	populateAllForeach: function() {
 		var eachElement = document.querySelectorAll("[render-view]")[0];
 		var eachElements = ElementProcessor.getAllChildrenWithAttribute(eachElement, "ar-foreach");
@@ -354,6 +379,10 @@ View.prototype = {
 			}
 		}
 	},
+	/*
+		Populates all elements inside a view and caches 
+		the elements that can later be updated easily by code 
+	*/
 	populateAllElements: function() {
 		this.storeElements();
 		this.populate();
@@ -382,6 +411,7 @@ View.prototype = {
 			this.populateAllElements();
 		}
 	},
+	/* Stores the elements that can be easily updated later by controller/code. */
 	storeElements: function() {
 		var dict = {}
 		var eles = this.viewElement.querySelectorAll("[ar-update]");

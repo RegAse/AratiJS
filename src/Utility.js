@@ -14,6 +14,16 @@ Utility.AddScriptToDOM = function(url, onload) {
 	// TODO: FIX:ANNOYING CACHE PROBLEM
 }
 
+Utility.addMethodToObject = function(object, methodName, method) {
+	object[methodName] = method;
+}
+
+Utility.addMethodToObjectsInArray = function(array, methodName, method) {
+	for (var i = array.length - 1; i >= 0; i--) {
+		array[i][methodName] = method;
+	}
+}
+
 /**
  * Replaces all instances of {{variable}} with 
  * the corresponding variable from the model
@@ -49,11 +59,6 @@ Utility.replaceWithVariables = function(text, model, otherModel, priorityContext
 			else {
 				// replace the string with a value from the controller
 				oper = Utility.resolve(model, oper);
-				if (oper == undefined) {
-					console.log("WARNING THIS SHOULD NOT HAPPEN");
-					console.log(model);
-					console.log(oper);
-				};
 			}
 
 			// Add the text that came before the opening of the tag.

@@ -25,6 +25,7 @@ Request.prototype = {
 	    		}
 	    		else {
 	    			console.log("An error occured during the Request.");
+	    			console.log(xmlhttp.statusText);
 	    		}
 	    	}
 	    }

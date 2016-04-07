@@ -13,9 +13,9 @@ Router.prototype = {
 	registerRoute: function(url, controllerName, viewPath, controllerPath) {
 		this.routes.push(
 			{
-				"url": url, 
-				"viewPath": viewPath, 
-				"controllerPath": controllerPath, 
+				"url": url,
+				"viewPath": viewPath,
+				"controllerPath": controllerPath,
 				"controllerName": controllerName
 			}
 		);

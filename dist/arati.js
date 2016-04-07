@@ -1,18 +1,26 @@
+/*
+	We always only want ONE instance of Arati.
+*/
 function Arati() {
+	console.log("The entry point");
 	this.router = {};
+	this.views = [];
 }
 
 Arati.prototype = {
-	setController: function(controllerName, file) {
-		console.log("Set controller here.");
+	/* Add a view to the app. */
+	addView: function(view) {
+		this.views.push(view);
 	},
 	setRouter: function(router) {
 		this.router = router;
 	},
 	update: function(name, value) {
 		console.log("Update: name = " + name + ", value = " + value);
+		router.currentRoute.controller[name] = value;
 		for (var i = this.router.currentRoute.view.dict[name].length - 1; i >= 0; i--) {
-			var output = Utility.ReplaceWithVariables(this.router.currentRoute.view.dict[name][i].template, router.currentRoute.controller);
+			var output = Utility.replaceWithVariables(this.router.currentRoute.view.dict[name][i].template, router.currentRoute.controller);
+			console.log(output);
 			this.router.currentRoute.view.dict[name][i].element.innerHTML = output;
 		}
 	}
@@ -47,6 +55,7 @@ Request.prototype = {
 	    		}
 	    		else {
 	    			console.log("An error occured during the Request.");
+	    			console.log(xmlhttp.statusText);
 	    		}
 	    	}
 	    }
@@ -89,6 +98,16 @@ Utility.AddScriptToDOM = function(url, onload) {
 	// TODO: FIX:ANNOYING CACHE PROBLEM
 }
 
+Utility.addMethodToObject = function(object, methodName, method) {
+	object[methodName] = method;
+}
+
+Utility.addMethodToObjectsInArray = function(array, methodName, method) {
+	for (var i = array.length - 1; i >= 0; i--) {
+		array[i][methodName] = method;
+	}
+}
+
 /**
  * Replaces all instances of {{variable}} with 
  * the corresponding variable from the model
@@ -124,11 +143,6 @@ Utility.replaceWithVariables = function(text, model, otherModel, priorityContext
 			else {
 				// replace the string with a value from the controller
 				oper = Utility.resolve(model, oper);
-				if (oper == undefined) {
-					console.log("WARNING THIS SHOULD NOT HAPPEN");
-					console.log(model);
-					console.log(oper);
-				};
 			}
 
 			// Add the text that came before the opening of the tag.
@@ -191,16 +205,18 @@ function View(view, route) {
 	this.route = route;
 	this.dict = {};
 	this.refs = {};
+	this.foreachTemplates = {};
+
+	this.viewElement = document.createElement('div');
+	this.viewElement.innerHTML = this.raw;
 }
 
 View.prototype = {
 	populate: function() {
 		//var renderViews = document.querySelectorAll('[render-view]');
-		var div = document.createElement('div');
-		div.innerHTML = this.raw;
 		
 		if (true) {
-			var view = div;
+			var view = this.viewElement;
 			var queue = []
 			for (var i = view.childNodes.length - 1; i >= 0; i--) {
 				queue.push(view.childNodes[i]);
@@ -239,7 +255,9 @@ View.prototype = {
 				}
 			}
 		}
-		document.querySelector('[render-view]').innerHTML = div.innerHTML;
+		var el = document.querySelector('[render-view]');
+		el.innerHTML = "";
+		el.appendChild(this.viewElement);
 	},
 	populateElement: function(element, context, priorityContextName) {
 		if (element.nodeName != "#text") {
@@ -269,19 +287,44 @@ View.prototype = {
 			this.populateElementAttributes(elementsObj["parentElements"][i2], context, priorityContextName);
 		}
 	},
+	removeOldForeachElements: function(propertyName) {
+		for (var i = this.refs[propertyName].length - 1; i >= 0; i--) {
+			this.refs[propertyName][i].remove();
+		}
+	},
 	populateForeach: function(eachElement, context, controller) {
 		var temp = eachElement.getAttribute("ar-foreach").split(" as ");
 		var propertyName = temp[0];
 		var as = temp[1];
 
 		console.log("Processing: " + propertyName + " as: " + as);
+		if (this.refs[propertyName] != null) {
+			this.removeOldForeachElements(propertyName);
+		}
 
 		var varia = Utility.resolve(context, propertyName);
-		
+
 		// do this x many times
 		for (var x = varia.length - 1; x >= 0; x--) {
 			// Clone a html element
 			var clone = eachElement.cloneNode(true);
+
+			// Remove the attribute of the clone
+			clone.removeAttribute("ar-foreach");
+			
+			// If the foreach elements need to be changed later or completely replaced it will need to know, then the framework stores the information.
+			if (clone.getAttribute("ar-model")) {
+				console.log("Update this later.");
+				// NEED TO WORK ON THIS SO I CAN ADD/REMOVE FROM LIST OF OBJECTS AND UPDATE THE VIEW WITH THAT INFO.
+				// this.refs["shows"][0] = [element]
+				//this.refs[propertyName][x] = []
+				if (this.refs[propertyName] == null) {
+					this.refs[propertyName] = [clone];
+				}
+				else {
+					this.refs[propertyName].push(clone);
+				}
+			}
 
 			eachElement.parentNode.insertBefore(clone, eachElement.nextSibling);
 
@@ -312,15 +355,24 @@ View.prototype = {
 		}
 	},
 	populateAllElements: function() {
-		this.populate();	
+		this.storeElements();
+		this.populate();
 		this.populateAllForeach();
+
+		// Code for ontype to work
+		// var el = document.querySelector("[ar-model]");
+		// var that = this;
+		// el.addEventListener("keyup", function(e){
+		// 	Arati.update(el.getAttribute("ar-model"), e.target.value);
+		// 	that.route.controller[el.getAttribute("ar-change")]();
+		// });
 	},
 	/* Executes when the view has loaded*/
 	load: function() {
 		console.log("Loaded");
 		var renderViews = document.querySelectorAll('[render-view]');
 		//renderViews[0].innerHTML = this.raw;
-		//this.storeElements();
+
 		//console.log(this.route.controller);
 		if (this.route.controller.init != null) {
 			var bound = this.populateAllElements.bind(this);
@@ -332,7 +384,7 @@ View.prototype = {
 	},
 	storeElements: function() {
 		var dict = {}
-		var eles = document.querySelectorAll("[ar-update]");
+		var eles = this.viewElement.querySelectorAll("[ar-update]");
 		for (var i = eles.length - 1; i >= 0; i--) {
 			var att = eles[i].getAttribute("ar-update");
 			var di = dict[att];
@@ -361,9 +413,9 @@ Router.prototype = {
 	registerRoute: function(url, controllerName, viewPath, controllerPath) {
 		this.routes.push(
 			{
-				"url": url, 
-				"viewPath": viewPath, 
-				"controllerPath": controllerPath, 
+				"url": url,
+				"viewPath": viewPath,
+				"controllerPath": controllerPath,
 				"controllerName": controllerName
 			}
 		);

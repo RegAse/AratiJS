@@ -2,15 +2,18 @@
 	Stores info about the current view and
 	can update the view in-part or fully.
 */
-function View(view, route) {
-	this.raw = view;
-	this.route = route;
+function View(rootElement, rawView, controller) {
+	this.raw = rawView;
+	this.rootElement = rootElement;
+	this.controller = new controller();
 	this.dict = {};
 	this.refs = {};
 	this.foreachTemplates = {};
 
 	this.viewElement = document.createElement('div');
 	this.viewElement.innerHTML = this.raw;
+	console.log("Created View.");
+	console.log(rootElement);
 }
 
 View.prototype = {
@@ -18,6 +21,7 @@ View.prototype = {
 		Populates the basic values inside a template
 	*/
 	populate: function() {
+		console.log("Populating View.");
 		var view = this.viewElement;
 		var queue = []
 		for (var i = view.childNodes.length - 1; i >= 0; i--) {
@@ -33,14 +37,14 @@ View.prototype = {
 
 					if (html != null) {
 						
-						html = Utility.replaceWithVariables(html, this.route.controller);
+						html = Utility.replaceWithVariables(html, this.controller);
 
 						element.innerHTML = html;
 
 						// NEED TO PROCESS ATTRIBUTES
 						for (var i = element.attributes.length - 1; i >= 0; i--) {
 							var attribute = element.attributes[i];
-							attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller);
+							attribute.value = Utility.replaceWithVariables(attribute.value, this.controller);
 						}
 					}
 				}
@@ -51,14 +55,15 @@ View.prototype = {
 				}
 				else if (element.nodeName == "#text" && element.data != null && element.data.trim().length != 0) {
 					var tex = element.data;
-					var text = Utility.replaceWithVariables(tex, this.route.controller);
+					var text = Utility.replaceWithVariables(tex, this.controller);
 					element.data = text;
 				}
 			}
 		}
-		var el = document.querySelector('[render-view]');
-		el.innerHTML = "";
-		el.appendChild(this.viewElement);
+		// var el = document.querySelector('[render-view]');
+		// el.innerHTML = "";
+		// el.appendChild(this.viewElement);
+		this.rootElement.innerHTML = this.viewElement.innerHTML;
 	},
 	/**
 	 * Populates all instances of {{variable}} inside
@@ -73,12 +78,12 @@ View.prototype = {
 	 */
 	populateElement: function(element, context, priorityContextName) {
 		if (element.nodeName != "#text") {
-			element.innerHTML = Utility.replaceWithVariables(element.innerHTML, this.route.controller, context, priorityContextName);
+			element.innerHTML = Utility.replaceWithVariables(element.innerHTML, this.controller, context, priorityContextName);
 
 			this.populateElementAttributes(element, context, priorityContextName);
 		}
 		else {
-			element.data = Utility.replaceWithVariables(element.data, this.route.controller, context, priorityContextName);
+			element.data = Utility.replaceWithVariables(element.data, this.controller, context, priorityContextName);
 		}
 	},
 	/**
@@ -96,7 +101,7 @@ View.prototype = {
 		// NEED TO PROCESS ATTRIBUTES
 		for (var i = element.attributes.length - 1; i >= 0; i--) {
 			var attribute = element.attributes[i];
-			attribute.value = Utility.replaceWithVariables(attribute.value, this.route.controller, context, priorityContextName);
+			attribute.value = Utility.replaceWithVariables(attribute.value, this.controller, context, priorityContextName);
 		}
 	},
 	/* A parent function for the populateElement */
@@ -174,7 +179,7 @@ View.prototype = {
 		var eachElements = ElementProcessor.getAllChildrenWithAttribute(eachElement, "ar-foreach");
 		for (var i = eachElements.length - 1; i >= 0; i--) {
 			try{
-				this.populateForeach(eachElements[i], this.route.controller, this.route.controller);
+				this.populateForeach(eachElements[i], this.controller, this.controller);
 			} catch(err)
 			{
 				console.log("[Arati ERROR] a variable was undefined when trying to run the foreach loop." + err);
@@ -201,13 +206,13 @@ View.prototype = {
 	/* Executes when the view has loaded*/
 	load: function() {
 		console.log("Loaded");
-		var renderViews = document.querySelectorAll('[render-view]');
+		//var renderViews = document.querySelectorAll('[render-view]');
 		//renderViews[0].innerHTML = this.raw;
 
-		//console.log(this.route.controller);
-		if (this.route.controller.init != null) {
+		//console.log(this.controller);
+		if (this.controller.init != null) {
 			var bound = this.populateAllElements.bind(this);
-			this.route.controller.init(bound);
+			this.controller.init(bound);
 		}
 		else {
 			this.populateAllElements();

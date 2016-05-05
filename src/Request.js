@@ -32,6 +32,33 @@ Request.prototype = {
 	    xmlhttp.open("GET", url, true);
 	    xmlhttp.send();
 	},
+	post: function(url, data, success, info) {
+		console.log("Requesting url: " + url);
+		var xmlhttp;
+
+		if (window.XMLHttpRequest) {
+			// code for IE7+, Firefox, Chrome, Opera, Safari
+			xmlhttp = new XMLHttpRequest();
+		} else {
+			// code for IE6, IE5
+			xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		}
+
+	    xmlhttp.onreadystatechange = function() {
+	    	if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+	    		if (xmlhttp.status == 200) {
+	    			success(xmlhttp.responseText, info);
+	    		}
+	    		else {
+	    			console.log("An error occured during the Request.");
+	    			console.log(xmlhttp.statusText);
+	    		}
+	    	}
+	    }
+	    xmlhttp.open("POST", url, true);
+	    xmlhttp.setRequestHeader("Content-type", "application/json");
+	    xmlhttp.send(data);
+	},
 	getAll: function(urlsObject, success) {
 		var res = {};
 		var checkins = 0;

@@ -8,9 +8,22 @@ function Arati() {
 	this.router = {};
 	this.views = [];
 	this.controllers = {};
+	this.globals = {};
 }
 
 Arati.prototype = {
+	addVariable: function(name, value) {
+		this.globals[name] = value;
+	},
+	getVariable: function(name) {
+		return this.globals[name];
+	},
+	variableExists: function(name) {
+		if (this.globals[name]) {
+			return true;
+		}
+		return false;
+	},
 	/* Add a controller to the app*/
 	addController: function(controllerName, func) {
 		this.controllers[controllerName] = func;
@@ -79,6 +92,33 @@ Request.prototype = {
 	    }
 	    xmlhttp.open("GET", url, true);
 	    xmlhttp.send();
+	},
+	post: function(url, data, success, info) {
+		console.log("Requesting url: " + url);
+		var xmlhttp;
+
+		if (window.XMLHttpRequest) {
+			// code for IE7+, Firefox, Chrome, Opera, Safari
+			xmlhttp = new XMLHttpRequest();
+		} else {
+			// code for IE6, IE5
+			xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		}
+
+	    xmlhttp.onreadystatechange = function() {
+	    	if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+	    		if (xmlhttp.status == 200) {
+	    			success(xmlhttp.responseText, info);
+	    		}
+	    		else {
+	    			console.log("An error occured during the Request.");
+	    			console.log(xmlhttp.statusText);
+	    		}
+	    	}
+	    }
+	    xmlhttp.open("POST", url, true);
+	    xmlhttp.setRequestHeader("Content-type", "application/json");
+	    xmlhttp.send(data);
 	},
 	getAll: function(urlsObject, success) {
 		var res = {};
@@ -221,13 +261,14 @@ Utility.resolve = function(current, next) {
 function View(rootElement, rawView, controller) {
 	this.raw = rawView;
 	this.rootElement = rootElement;
-	this.controller = new controller();
+	this.controller = new controller(this);
 	this.dict = {};
 	this.refs = {};
 	this.foreachTemplates = {};
 
 	this.viewElement = document.createElement('div');
 	this.viewElement.innerHTML = this.raw;
+	this.rootElement.innerHTML = "";
 	console.log("Created View.");
 	console.log(rootElement);
 }
@@ -278,8 +319,10 @@ View.prototype = {
 		}
 		// var el = document.querySelector('[render-view]');
 		// el.innerHTML = "";
-		// el.appendChild(this.viewElement);
-		this.rootElement.innerHTML = this.viewElement.innerHTML;
+		//el.appendChild(this.viewElement);
+
+		this.rootElement.appendChild(this.viewElement);
+		//this.rootElement.innerHTML = this.viewElement.innerHTML;
 	},
 	/**
 	 * Populates all instances of {{variable}} inside
@@ -410,6 +453,7 @@ View.prototype = {
 		this.storeElements();
 		this.populate();
 		this.populateAllForeach();
+		this.registerEvents();
 
 		// Code for ontype to work
 		// var el = document.querySelector("[ar-model]");
@@ -449,6 +493,58 @@ View.prototype = {
 			}
 		}
 		this.dict = dict;
+	},
+	/* Registers all arati specific events */
+	registerEvents: function() {
+		var that = this;
+
+		var onclickElements = this.rootElement.querySelectorAll("[ar-onclick]");
+		for (var i = 0; i < onclickElements.length; i++) {
+			onclickElements[i].addEventListener("click", this.controller[onclickElements[i].getAttribute("ar-onclick")]);
+		}
+
+		var boundElements = this.rootElement.querySelectorAll("[ar-model]");
+		for (var i = 0; i < boundElements.length; i++) {
+			console.log("Register click event.");
+			boundElements[i].addEventListener("change", function(el) {
+				that.onModelChanged(el);
+			});
+		}
+
+		var changedElements = this.rootElement.querySelectorAll("[ar-change]");
+		for (var i = 0; i < changedElements.length; i++) {
+			console.log("Register click event.");
+			changedElements[i].addEventListener("change", function(el) {
+				that.onElementChanged(el);
+			});
+		}
+	},
+	onElementChanged: function(el) {
+		this.controller[el.target.getAttribute("ar-change")]();
+	},
+	onModelChanged: function(el) {
+		this.update(el.target.getAttribute("ar-model"), el.target.value);
+	},
+	update: function(name, value) {
+		if (value != undefined) {
+			//console.log("Update: name = " + name + ", value = " + value);
+			this.controller[name] = value;
+		}
+		for (var i = this.dict[name].length - 1; i >= 0; i--) {
+			// If it's updating a list then update it differently.
+			if (this.dict[name][i].element.getAttribute("ar-foreach")) {
+				/* Do some foreach updating */
+				var ele = this.dict[name][i].element;
+				// Need to find a way to store the original display style so i can actually reverse back correctly.
+				ele.style.display = "block"; // THIS IS A QUICKFIX !!
+
+				this.populateForeach(ele, this.controller, this.controller);
+			}
+			else {
+				var output = Utility.replaceWithVariables(this.dict[name][i].template, this.controller);
+				this.dict[name][i].element.innerHTML = output;
+			}
+		}
 	}
 }
 function Router() {

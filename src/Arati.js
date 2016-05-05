@@ -8,9 +8,22 @@ function Arati() {
 	this.router = {};
 	this.views = [];
 	this.controllers = {};
+	this.globals = {};
 }
 
 Arati.prototype = {
+	addVariable: function(name, value) {
+		this.globals[name] = value;
+	},
+	getVariable: function(name) {
+		return this.globals[name];
+	},
+	variableExists: function(name) {
+		if (this.globals[name]) {
+			return true;
+		}
+		return false;
+	},
 	/* Add a controller to the app*/
 	addController: function(controllerName, func) {
 		this.controllers[controllerName] = func;

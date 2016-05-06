@@ -120,6 +120,7 @@ Request.prototype = {
 	    xmlhttp.setRequestHeader("Content-type", "application/json");
 	    xmlhttp.send(data);
 	},
+	/* Basicaly sets up a basic waiting system and when the last one calls in, the success method is called. */
 	getAll: function(urlsObject, success) {
 		var res = {};
 		var checkins = 0;
@@ -581,8 +582,6 @@ Router.prototype = {
 		this.currentRoute = this.findRoute(currentUrl);
 		console.log("Found the route");
 
-		// Need to load the current route
-		// TODO MAKE BETTER
 		this.LoadCurrentRoute(true, false);
 	},
 	findRoute: function(url) {
@@ -639,16 +638,9 @@ Router.prototype = {
 				Utility.AddScriptToDOM(url, function(){
 					// the script was loaded 
 					that.currentRoute.controller = window[that.currentRoute.controllerName];
-						if (render) {
-							that.currentRoute.view.load();
-						}
-					// try {
-						
-					// } catch(error){
-					// 	console.log("[Arati ERROR] The controller was not found.");
-					// }
-					//that.populateCurrentRouteView();
-					// NEED TO RECODE populate function
+					if (render) {
+						that.currentRoute.view.load();
+					}
 				});
 			}
 			else {
@@ -657,10 +649,8 @@ Router.prototype = {
 			}
 		});
 	},
+	/* Decides what to do when the url changes. */
 	hashChanged: function() {
-		//Set the previous controller to null
-		//window[this.currentRoute.controller] = undefined;
-
 		var currentUrl = window.location.hash.slice(1);
 		this.currentRoute = this.findRoute(currentUrl);
 		this.LoadCurrentRoute(true, true);
@@ -752,7 +742,6 @@ var ElementProcessor = {
 		{
 			for (var i = queue.length - 1; i >= 0; i--) {
 				if (queue[i].nodeName != "#text" && queue[i].children.length == 0) {
-					// console.log(queue[i]);
 					allDescendants.push(queue[i]);
 				}
 				else if (queue[i].nodeName != "#text") {
@@ -762,7 +751,6 @@ var ElementProcessor = {
 				}
 
 				if (queue[i].nodeName == "#text" && queue[i].data != null) {
-					// console.log("This is a text node: " + queue[i].data);
 					allDescendants.push(queue[i]);
 				}
 

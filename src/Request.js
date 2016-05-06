@@ -59,6 +59,7 @@ Request.prototype = {
 	    xmlhttp.setRequestHeader("Content-type", "application/json");
 	    xmlhttp.send(data);
 	},
+	/* Basicaly sets up a basic waiting system and when the last one calls in, the success method is called. */
 	getAll: function(urlsObject, success) {
 		var res = {};
 		var checkins = 0;

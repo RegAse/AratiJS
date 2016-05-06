@@ -21,8 +21,6 @@ Router.prototype = {
 		this.currentRoute = this.findRoute(currentUrl);
 		console.log("Found the route");
 
-		// Need to load the current route
-		// TODO MAKE BETTER
 		this.LoadCurrentRoute(true, false);
 	},
 	findRoute: function(url) {
@@ -79,16 +77,9 @@ Router.prototype = {
 				Utility.AddScriptToDOM(url, function(){
 					// the script was loaded 
 					that.currentRoute.controller = window[that.currentRoute.controllerName];
-						if (render) {
-							that.currentRoute.view.load();
-						}
-					// try {
-						
-					// } catch(error){
-					// 	console.log("[Arati ERROR] The controller was not found.");
-					// }
-					//that.populateCurrentRouteView();
-					// NEED TO RECODE populate function
+					if (render) {
+						that.currentRoute.view.load();
+					}
 				});
 			}
 			else {
@@ -97,10 +88,8 @@ Router.prototype = {
 			}
 		});
 	},
+	/* Decides what to do when the url changes. */
 	hashChanged: function() {
-		//Set the previous controller to null
-		//window[this.currentRoute.controller] = undefined;
-
 		var currentUrl = window.location.hash.slice(1);
 		this.currentRoute = this.findRoute(currentUrl);
 		this.LoadCurrentRoute(true, true);

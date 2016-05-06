@@ -84,7 +84,6 @@ var ElementProcessor = {
 		{
 			for (var i = queue.length - 1; i >= 0; i--) {
 				if (queue[i].nodeName != "#text" && queue[i].children.length == 0) {
-					// console.log(queue[i]);
 					allDescendants.push(queue[i]);
 				}
 				else if (queue[i].nodeName != "#text") {
@@ -94,7 +93,6 @@ var ElementProcessor = {
 				}
 
 				if (queue[i].nodeName == "#text" && queue[i].data != null) {
-					// console.log("This is a text node: " + queue[i].data);
 					allDescendants.push(queue[i]);
 				}
 

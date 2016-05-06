@@ -1,9 +1,12 @@
 /* Utility */
+function Utility() {}
 
-function Utility() {
-	
-}
-
+/**
+ * Adds a user defined method/variable to all objects inside array. 
+ * @param {String} url - The url to retrieve the script file.
+ * @param {Object} onload - Function to call when the script has loaded.
+ * @return {}
+ */
 Utility.AddScriptToDOM = function(url, onload) {
 	var script = document.createElement("script");
 	
@@ -11,13 +14,26 @@ Utility.AddScriptToDOM = function(url, onload) {
 	script.setAttribute("araticontrollerremove", "");
 	document.body.appendChild(script);
 	script.src = url + (Arati.devMode ? "?ts=" + Date.now() : "");
-	// TODO: FIX:ANNOYING CACHE PROBLEM
 }
 
+/**
+ * Adds a user defined method/variable to the object. 
+ * @param {Object} object 
+ * @param {String} methodName
+ * @param {Object} method
+ * @return {Array} the array
+ */
 Utility.addMethodToObject = function(object, methodName, method) {
 	object[methodName] = method;
 }
 
+/**
+ * Adds a user defined method/variable to all objects inside array. 
+ * @param {Array} array the array to add the method to. 
+ * @param {String} methodName
+ * @param {Object} method
+ * @return {Array} the array
+ */
 Utility.addMethodToObjectsInArray = function(array, methodName, method) {
 	for (var i = array.length - 1; i >= 0; i--) {
 		array[i][methodName] = method;
@@ -82,8 +98,6 @@ Utility.replaceWithVariables = function(text, model, otherModel, priorityContext
 }
 
 /**
- * TODO: Make function more readable
- *
  * Resolves a variable or a call to
  * a function in a object
  * @param {Object} current
@@ -91,11 +105,15 @@ Utility.replaceWithVariables = function(text, model, otherModel, priorityContext
  * @return {Object} current 
  */
 Utility.resolve = function(current, next) {
+	// Split on '.'
 	next = next.split('.');
 
+	// Runs through all splits and accesses the corresponding variable.
 	while (current && next[0]) {
 		var nh = next.shift();
+		// Checks if the object exists
 		if (current[nh] == undefined) {
+			// The variable does not exist on the object, so it will try to check if it is a function call.
 			var spli = nh.split("(");
 			var functionName = spli[0];
 			var args = spli[1].replace(')', '').split(',');
@@ -103,6 +121,7 @@ Utility.resolve = function(current, next) {
 				args[i] = args[i].trim();
 			}
 
+			// Calls the function with the correct context.
 			var s = current[functionName].apply(current, args);
 			return s;
 		}

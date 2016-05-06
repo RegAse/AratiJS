@@ -13,8 +13,6 @@ function View(rootElement, rawView, controller) {
 	this.viewElement = document.createElement('div');
 	this.viewElement.innerHTML = this.raw;
 	this.rootElement.innerHTML = "";
-	console.log("Created View.");
-	console.log(rootElement);
 }
 
 View.prototype = {
@@ -22,7 +20,6 @@ View.prototype = {
 		Populates the basic values inside a template
 	*/
 	populate: function() {
-		console.log("Populating View.");
 		var view = this.viewElement;
 		var queue = []
 		for (var i = view.childNodes.length - 1; i >= 0; i--) {
@@ -33,7 +30,6 @@ View.prototype = {
 			for (var i = queue.length - 1; i >= 0; i--) {
 				var element = queue.pop();
 				if (element.nodeName != "#text" && element.nodeName != "#comment" && element.children.length == 0 && element.getAttribute("ar-foreach") == null) {
-					// console.log(element);
 					var html = element.innerHTML;
 
 					if (html != null) {
@@ -42,7 +38,7 @@ View.prototype = {
 
 						element.innerHTML = html;
 
-						// NEED TO PROCESS ATTRIBUTES
+						// Process the attributes on the element.
 						for (var i = element.attributes.length - 1; i >= 0; i--) {
 							var attribute = element.attributes[i];
 							attribute.value = Utility.replaceWithVariables(attribute.value, this.controller);
@@ -61,12 +57,9 @@ View.prototype = {
 				}
 			}
 		}
-		// var el = document.querySelector('[render-view]');
-		// el.innerHTML = "";
-		//el.appendChild(this.viewElement);
 
+		// Adds the element to the view.
 		this.rootElement.appendChild(this.viewElement);
-		//this.rootElement.innerHTML = this.viewElement.innerHTML;
 	},
 	/**
 	 * Populates all instances of {{variable}} inside
@@ -107,10 +100,14 @@ View.prototype = {
 			attribute.value = Utility.replaceWithVariables(attribute.value, this.controller, context, priorityContextName);
 		}
 	},
-	/* A parent function for the populateElement */
+	/**
+	 * A parent function for populateElements
+	 * @param {Object} elementsObj - object with elements grouped into nonParent and parent elements
+	 * @param {Object} context - the context/controller.
+	 * @param {String} priorityContextName
+	 * @return 
+	 */
 	populateElements: function(elementsObj, context, priorityContextName) {
-		console.log("Populate Elements: the PriorityContextName = " + priorityContextName);
-
 		for (var i = elementsObj["nonParentElements"].length - 1; i >= 0; i--) {
 			this.populateElement(elementsObj["nonParentElements"][i], context, priorityContextName);
 		}
@@ -125,7 +122,13 @@ View.prototype = {
 			this.refs[propertyName][i].remove();
 		}
 	},
-	/* Populates a ar-foreach element with data from the controller/model */
+	/**
+	 * Populates a ar-foreach element with data from the controller/model
+	 * @param {Object} eachElement - the element to process.
+	 * @param {Object} context - the context/controller/otherContext.
+	 * @param {String} controller - the context/controller.
+	 * @return 
+	 */
 	populateForeach: function(eachElement, context, controller) {
 		var temp = eachElement.getAttribute("ar-foreach").split(" as ");
 		var propertyName = temp[0];
@@ -148,10 +151,6 @@ View.prototype = {
 			
 			// If the foreach elements need to be changed later or completely replaced it will need to know, then the framework stores the information.
 			if (clone.getAttribute("ar-model")) {
-				console.log("Update this later.");
-				// NEED TO WORK ON THIS SO I CAN ADD/REMOVE FROM LIST OF OBJECTS AND UPDATE THE VIEW WITH THAT INFO.
-				// this.refs["shows"][0] = [element]
-				//this.refs[propertyName][x] = []
 				if (this.refs[propertyName] == null) {
 					this.refs[propertyName] = [clone];
 				}
@@ -198,22 +197,9 @@ View.prototype = {
 		this.populate();
 		this.populateAllForeach();
 		this.registerEvents();
-
-		// Code for ontype to work
-		// var el = document.querySelector("[ar-model]");
-		// var that = this;
-		// el.addEventListener("keyup", function(e){
-		// 	Arati.update(el.getAttribute("ar-model"), e.target.value);
-		// 	that.route.controller[el.getAttribute("ar-change")]();
-		// });
 	},
 	/* Executes when the view has loaded*/
 	load: function() {
-		console.log("Loaded");
-		//var renderViews = document.querySelectorAll('[render-view]');
-		//renderViews[0].innerHTML = this.raw;
-
-		//console.log(this.controller);
 		if (this.controller.init != null) {
 			var bound = this.populateAllElements.bind(this);
 			this.controller.init(bound);
@@ -269,6 +255,12 @@ View.prototype = {
 	onModelChanged: function(el) {
 		this.update(el.target.getAttribute("ar-model"), el.target.value);
 	},
+	/**
+	 * Updates a specific value and lets Arati/controller know about it so it can update the view.
+	 * @param {String} name - name of the object
+	 * @param {Object} value - the updated object
+	 * @return 
+	 */
 	update: function(name, value) {
 		if (value != undefined) {
 			//console.log("Update: name = " + name + ", value = " + value);

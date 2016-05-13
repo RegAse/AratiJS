@@ -1,3 +1,5 @@
+[The site](http://retracktv.herokuapp.com/#/)  
+[Code behind site made with AratiJS] (https://bitbucket.org/regase/tv-show-tracker-app)
 # AratiJS
 Arati is a javascript framework that includes a router and a templating solution and it's base goal is
 to be simple and fast(it's slow ATM).
